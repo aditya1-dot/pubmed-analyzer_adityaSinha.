@@ -1,15 +1,41 @@
 from pubmed_analyzer.api import PubMedAPI
-from pubmed_analyzer.filters import analyze_affiliations
+from pubmed_analyzer.filters import AuthorFilter
+import logging
 
-# Initialize API client
-client = PubMedAPI(email="your.email@example.com", api_key="your_api_key")
+# Configure logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
-# Fetch papers
-papers = client.fetch_papers(query="Artificial Intelligence AND Drug Discovery AND 2023[DP]")
+def main():
+    # User inputs
+    email = "your.email@example.com"  # Replace with your email
+    api_key = None  # Optional: Replace with your PubMed API key if you have one
+    query = "cancer research"  # PubMed search query
+    max_results = 10  # Number of papers to fetch
 
-# Analyze affiliations
-industry_papers = analyze_affiliations(papers)
+    # Initialize PubMedAPI and AuthorFilter
+    pubmed_api = PubMedAPI(email=email, api_key=api_key)
+    author_filter = AuthorFilter()
 
-# Export results
-with open("results.csv", "w") as f:
-    client.export_to_csv(industry_papers, f)
+    # Search PubMed and fetch papers
+    logging.info(f"Searching PubMed for query: {query}")
+    papers = pubmed_api.search_papers(query, max_results=max_results)
+
+    # Analyze papers for non-academic authors
+    logging.info(f"Analyzing {len(papers)} papers for non-academic affiliations...")
+    for paper in papers:
+        analysis = author_filter.analyze_paper(paper)
+
+        if analysis["non_academic_authors"]:
+            print("--------------------------------------------------")
+            print(f"PMID: {paper['pmid']}")
+            print(f"Title: {paper['title']}")
+            print(f"Publication Date: {paper['publication_date']}")
+            print(f"Non-academic Authors: {', '.join(analysis['non_academic_authors'])}")
+            print(f"Company Affiliations: {', '.join(analysis['company_affiliations'])}")
+            print(f"Corresponding Author Email: {paper['corresponding_email']}")
+            print("--------------------------------------------------")
+        else:
+            logging.info(f"No non-academic authors found for paper: {paper['title']}")
+
+if __name__ == "__main__":
+    main()
